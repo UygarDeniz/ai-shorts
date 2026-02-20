@@ -232,7 +232,7 @@ export function TopicForm() {
                   </div>
                   <Input
                     id={`${formId}-style-custom`}
-                    placeholder="Or describe a custom style... e.g. Miyazaki anime with lush forests"
+                    placeholder="Or describe a custom style..."
                     disabled={loading}
                     className="mt-1"
                     value={customStyle}
