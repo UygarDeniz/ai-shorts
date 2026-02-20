@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Play, Square, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -14,68 +16,65 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
-import { createVideo, videosKeys } from "@/lib/api";
+import {
+  createVideo,
+  getVoices,
+  getConfig,
+  videosKeys,
+} from "@/lib/api/videos";
 
-const STYLE_PRESETS = [
-  {
-    label: "Cinematic",
-    value: "Cinematic look with dramatic lighting and depth of field",
-  },
-  {
-    label: "Anime",
-    value: "Anime art style with vibrant colors and cel-shading",
-  },
-  {
-    label: "60's Retro",
-    value: "1960s retro aesthetic with warm tones and film grain",
-  },
-  {
-    label: "Noir",
-    value: "Black and white film noir with high contrast shadows",
-  },
-  {
-    label: "Steampunk",
-    value: "Steampunk aesthetic with brass, gears, and Victorian elements",
-  },
-  {
-    label: "Watercolor",
-    value: "Soft watercolor painting style with flowing brushstrokes",
-  },
-  {
-    label: "Neon",
-    value: "Neon-lit cyberpunk city aesthetic with glowing colors",
-  },
-  {
-    label: "Minimalist",
-    value: "Clean minimalist style with muted tones and simple shapes",
-  },
-] as const;
+function VoicePlayButton({ previewUrl }: { previewUrl: string }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-const VOICE_PRESETS = [
-  { label: "Rachel", value: "21m00Tcm4TlvDq8ikWAM", desc: "Calm female" },
-  { label: "Adam", value: "pNInz6obpgDQGcFmaJgB", desc: "Deep male" },
-  { label: "Antoni", value: "ErXwobaYiN019PkySvjV", desc: "Young male" },
-  { label: "Bella", value: "EXAVITQu4vr4xnSDxMaL", desc: "Soft female" },
-  { label: "Domi", value: "AZnzlk1XvdvUeBnXmlld", desc: "Strong female" },
-  { label: "Josh", value: "TxGEqnHWrfWFTfGW9XjX", desc: "Deep young male" },
-] as const;
+  useEffect(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(previewUrl);
+      audioRef.current.addEventListener("ended", () => setIsPlaying(false));
+      audioRef.current.addEventListener("pause", () => setIsPlaying(false));
+      audioRef.current.addEventListener("play", () => setIsPlaying(true));
+    }
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
+    };
+  }, [previewUrl]);
 
-const MODEL_PRESETS = [
-  {
-    value: "fast-wan",
-    label: "Fast Wan",
-    desc: "Fast, anime & general purpose",
-    resolutions: ["480p", "580p", "720p"],
-    defaultResolution: "480p",
-  },
-  {
-    value: "vidu-q3-turbo",
-    label: "Vidu Q3 Turbo",
-    desc: "High quality cinematic",
-    resolutions: ["360p", "540p", "720p", "1080p"],
-    defaultResolution: "720p",
-  },
-] as const;
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    } else {
+      audioRef.current.play().catch(console.error);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={togglePlay}
+      className={`p-1 rounded-full transition-colors opacity-0 group-hover:opacity-100 ${
+        isPlaying
+          ? "bg-primary text-primary-foreground opacity-100"
+          : "bg-muted text-muted-foreground hover:bg-primary/20 hover:text-primary"
+      }`}
+      title="Preview voice"
+    >
+      {isPlaying ? (
+        <Square className="w-3 h-3" />
+      ) : (
+        <Play className="w-3 h-3 text-current ml-[1px]" />
+      )}
+    </button>
+  );
+}
 
 const topicFormSchema = z.object({
   topic: z.string().min(3, "Topic must be at least 3 characters").max(500),
@@ -92,11 +91,11 @@ type TopicFormValues = z.infer<typeof topicFormSchema>;
 const defaultValues: TopicFormValues = {
   topic: "",
   durationSec: 5,
-  style: STYLE_PRESETS[0].value,
+  style: "",
   captions: true,
-  voiceId: VOICE_PRESETS[0].value,
-  modelId: MODEL_PRESETS[0].value,
-  resolution: MODEL_PRESETS[0].defaultResolution,
+  voiceId: "",
+  modelId: "",
+  resolution: "",
 };
 
 const formId = "topic-form";
@@ -108,6 +107,31 @@ export function TopicForm() {
     resolver: zodResolver(topicFormSchema),
     defaultValues,
   });
+
+  const { data: config, isLoading: configLoading } = useQuery({
+    queryKey: videosKeys.config,
+    queryFn: getConfig,
+  });
+
+  const { data: voices, isLoading: voicesLoading } = useQuery({
+    queryKey: videosKeys.voices,
+    queryFn: getVoices,
+  });
+
+  useEffect(() => {
+    if (config && voices && !form.formState.isDirty) {
+      form.reset({
+        ...form.getValues(),
+        style: form.getValues().style || config.styles[0]?.value || "",
+        voiceId: form.getValues().voiceId || voices[0]?.id || "",
+        modelId: form.getValues().modelId || config.models[0]?.value || "",
+        resolution:
+          form.getValues().resolution ||
+          config.models[0]?.defaultResolution ||
+          "",
+      });
+    }
+  }, [config, voices, form]);
 
   const createMutation = useMutation({
     mutationFn: (values: TopicFormValues) =>
@@ -131,11 +155,21 @@ export function TopicForm() {
     },
   });
 
-  const loading = createMutation.isPending;
+  const isDataLoading = configLoading || voicesLoading;
+  const loading = createMutation.isPending || isDataLoading;
   const topicValue = form.watch("topic");
 
   function onSubmit(values: TopicFormValues) {
     createMutation.mutate(values);
+  }
+
+  if (isDataLoading) {
+    return (
+      <div className="flex w-full max-w-2xl items-center justify-center p-8 text-muted-foreground">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+        <span>Loading...</span>
+      </div>
+    );
   }
 
   return (
@@ -168,7 +202,8 @@ export function TopicForm() {
           name="style"
           control={form.control}
           render={({ field, fieldState }) => {
-            const selectedPresetIndex = STYLE_PRESETS.findIndex(
+            const styles = config?.styles || [];
+            const selectedPresetIndex = styles.findIndex(
               (p) => p.value === field.value,
             );
             const customStyle = selectedPresetIndex >= 0 ? "" : field.value;
@@ -179,7 +214,7 @@ export function TopicForm() {
                 </FieldLabel>
                 <div className="space-y-2">
                   <div className="grid grid-cols-4 gap-2">
-                    {STYLE_PRESETS.map((preset, i) => (
+                    {styles.map((preset, i) => (
                       <button
                         key={preset.label}
                         type="button"
@@ -220,26 +255,34 @@ export function TopicForm() {
             <Field>
               <FieldLabel>Voice</FieldLabel>
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                {VOICE_PRESETS.map((preset) => (
-                  <button
-                    key={preset.value}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => field.onChange(preset.value)}
-                    className={`rounded-lg border px-3 py-2 text-center transition-colors ${
-                      field.value === preset.value
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-background text-muted-foreground hover:border-primary/50"
-                    }`}
-                  >
-                    <span className="block text-sm font-medium">
-                      {preset.label}
-                    </span>
-                    <span className="block text-[10px] text-muted-foreground">
-                      {preset.desc}
-                    </span>
-                  </button>
-                ))}
+                {(voices || []).map((voice) => {
+                  return (
+                    <div key={voice.id} className="relative group h-full">
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => field.onChange(voice.id)}
+                        className={`w-full h-full rounded-lg border px-3 py-2 flex flex-col items-center justify-center text-center transition-colors ${
+                          field.value === voice.id
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-background text-muted-foreground hover:border-primary/50"
+                        }`}
+                      >
+                        <span className="block text-sm font-medium">
+                          {voice.label}
+                        </span>
+                        <span className="block text-[10px] text-muted-foreground mt-0.5">
+                          {voice.desc}
+                        </span>
+                      </button>
+                      {voice.previewUrl && (
+                        <div className="absolute top-1 right-1 z-10">
+                          <VoicePlayButton previewUrl={voice.previewUrl} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </Field>
           )}
@@ -252,32 +295,32 @@ export function TopicForm() {
             <Field>
               <FieldLabel>AI Video Model</FieldLabel>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {MODEL_PRESETS.map((preset) => (
+                {(config?.models || []).map((model) => (
                   <button
-                    key={preset.value}
+                    key={model.value}
                     type="button"
                     disabled={loading}
                     onClick={() => {
-                      field.onChange(preset.value);
-                      form.setValue("resolution", preset.defaultResolution);
+                      field.onChange(model.value);
+                      form.setValue("resolution", model.defaultResolution);
                     }}
                     className={`flex flex-col items-start rounded-lg border p-3 transition-colors ${
-                      field.value === preset.value
+                      field.value === model.value
                         ? "border-primary bg-primary/10"
                         : "border-border bg-background hover:border-primary/50"
                     }`}
                   >
                     <span
                       className={`font-semibold ${
-                        field.value === preset.value
+                        field.value === model.value
                           ? "text-primary"
                           : "text-foreground"
                       }`}
                     >
-                      {preset.label}
+                      {model.label}
                     </span>
                     <span className="text-sm text-muted-foreground mt-1">
-                      {preset.desc}
+                      {model.desc}
                     </span>
                   </button>
                 ))}
@@ -291,9 +334,11 @@ export function TopicForm() {
           control={form.control}
           render={({ field }) => {
             const currentModelId = form.watch("modelId");
+            const models = config?.models || [];
             const currentModel =
-              MODEL_PRESETS.find((m) => m.value === currentModelId) ||
-              MODEL_PRESETS[0];
+              models.find((m) => m.value === currentModelId) || models[0];
+
+            if (!currentModel) return <></>;
 
             return (
               <Field>

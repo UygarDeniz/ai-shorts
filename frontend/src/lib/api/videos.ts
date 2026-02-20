@@ -8,7 +8,30 @@ export const videosKeys = {
     [...videosKeys.lists(), page, limit] as const,
   details: () => [...videosKeys.all, "detail"] as const,
   detail: (id: string) => [...videosKeys.details(), id] as const,
+  voices: ["voices"] as const,
+  config: ["video-config"] as const,
 };
+
+export interface VideoConfig {
+  styles: Array<{ label: string; value: string }>;
+  models: Array<{
+    value: string;
+    label: string;
+    desc: string;
+    resolutions: string[];
+    defaultResolution: string;
+  }>;
+}
+
+export async function getConfig(): Promise<VideoConfig> {
+  return api.get("/videos/config");
+}
+
+export async function getVoices(): Promise<
+  { id: string; label: string; desc: string; previewUrl?: string }[]
+> {
+  return api.get("/voices");
+}
 
 export async function createVideo(
   topic: string,

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { VOICE_PRESETS } from './voice.constants.js';
 import * as ffmpeg from 'fluent-ffmpeg';
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
@@ -205,5 +206,36 @@ export class VoiceService {
     );
 
     return { audioPath: outputPath, durationSec, wordTimestamps };
+  }
+
+  async getVoices() {
+    this.logger.log('Fetching available voices from ElevenLabs');
+    const response = await fetch('https://api.elevenlabs.io/v1/voices', {
+      method: 'GET',
+      headers: {
+        'xi-api-key': this.apiKey,
+      },
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(
+        `ElevenLabs API error fetching voices (${response.status}): ${errorBody}`,
+      );
+    }
+
+    const data = (await response.json()) as {
+      voices: Array<{ voice_id: string; name: string; preview_url?: string }>;
+    };
+
+    return VOICE_PRESETS.map((preset) => {
+      const apiVoice = data.voices.find((v) => v.voice_id === preset.value);
+      return {
+        id: preset.value,
+        label: preset.label,
+        desc: preset.desc,
+        previewUrl: apiVoice?.preview_url,
+      };
+    });
   }
 }

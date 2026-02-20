@@ -15,6 +15,7 @@ import * as fs from 'node:fs';
 import { VideoService } from './video.service.js';
 import { PipelineLoggerService } from './pipeline-logger.service.js';
 import { CreateVideoDto } from './dto/create-video.dto.js';
+import { MODEL_PRESETS, STYLE_PRESETS } from './video.constants.js';
 
 @Controller('api/videos')
 export class VideoController {
@@ -22,6 +23,14 @@ export class VideoController {
     private readonly videoService: VideoService,
     private readonly pipelineLogger: PipelineLoggerService,
   ) {}
+
+  @Get('config')
+  getConfig() {
+    return {
+      styles: STYLE_PRESETS,
+      models: MODEL_PRESETS,
+    };
+  }
 
   @Post()
   async create(@Body() dto: CreateVideoDto) {
