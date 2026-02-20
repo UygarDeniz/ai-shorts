@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum VideoStatus {
+  queued
+  scripting
+  voicing
+  generating
+  merging
+  completed
+  failed
+}
+
+model Video {
+  id           String      @id @default(cuid())
+  topic        String
+  style        String      @default("Cinematic")
+  captions     Boolean     @default(true)
+  voiceId      String      @default("")
+  status       VideoStatus @default(queued)
+  script       String?     @db.Text
+  visualPrompt String?     @db.Text
+  audioUrl     String?
+  videoUrl     String?
+  finalUrl     String?
+  error        String?     @db.Text
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
