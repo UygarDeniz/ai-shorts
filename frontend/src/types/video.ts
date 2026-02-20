@@ -26,6 +26,8 @@ export interface Video {
   videoUrl: string | null;
   finalUrl: string | null;
   error: string | null;
+  modelId: string;
+  resolution: string;
   createdAt: string;
   updatedAt: string;
 }

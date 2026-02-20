@@ -24,17 +24,28 @@ export class VideoService {
     const style = dto.style ?? 'Cinematic';
     const captions = dto.captions ?? true;
     const voiceId = dto.voiceId ?? '';
+    const modelId = dto.modelId ?? 'fast-wan';
+    const resolution = dto.resolution ?? '480p';
+
     const video = await this.prisma.video.create({
-      data: { topic: dto.topic, style, captions, voiceId },
+      data: { topic: dto.topic, style, captions, voiceId, modelId, resolution },
     });
 
     this.logger.log(
-      `Created video record ${video.id} for topic: "${dto.topic}" style: "${style}" captions: ${captions} voiceId: "${voiceId}"`,
+      `Created video record ${video.id} for topic: "${dto.topic}" style: "${style}" captions: ${captions} voiceId: "${voiceId}" modelId: "${modelId}" resolution: "${resolution}"`,
     );
 
     await this.videoQueue.add(
       'generate',
-      { videoId: video.id, durationSec, style, captions, voiceId },
+      {
+        videoId: video.id,
+        durationSec,
+        style,
+        captions,
+        voiceId,
+        modelId,
+        resolution,
+      },
       {
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },

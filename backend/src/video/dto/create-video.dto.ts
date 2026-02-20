@@ -36,4 +36,14 @@ export class CreateVideoDto {
   @IsString()
   @MaxLength(100)
   voiceId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  modelId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  resolution?: string;
 }

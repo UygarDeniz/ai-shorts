@@ -120,6 +120,18 @@ export default function VideoDetailPage({
               <span>{video.style}</span>
             </>
           )}
+          {video.modelId && (
+            <>
+              <span>·</span>
+              <span>{video.modelId}</span>
+            </>
+          )}
+          {video.resolution && (
+            <>
+              <span>·</span>
+              <span>{video.resolution}</span>
+            </>
+          )}
         </div>
       </div>
 

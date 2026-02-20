@@ -36,8 +36,8 @@ export interface PipelineRunData {
         prompts: string[];
         aspectRatio: string;
         resolution: string;
-        framesPerSecond: number;
-        numFrames: number;
+        modelId?: string;
+        providerConfig?: Record<string, any>;
         requestedTargetDurationSec: number;
         sourceAudioDurationSec: number;
       };
@@ -45,7 +45,7 @@ export interface PipelineRunData {
         videoPath: string;
         falVideoUrl?: string;
         generatedDurationSec: number;
-        isDurationCapped: boolean;
+        isDurationCapped?: boolean;
         segments?: { durationSec: number; path: string }[];
       };
       durationMs?: number;

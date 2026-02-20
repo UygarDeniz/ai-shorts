@@ -23,6 +23,8 @@ model Video {
   style        String      @default("Cinematic")
   captions     Boolean     @default(true)
   voiceId      String      @default("")
+  modelId      String      @default("fast-wan")
+  resolution   String      @default("480p")
   status       VideoStatus @default(queued)
   script       String?     @db.Text
   visualPrompt String?     @db.Text

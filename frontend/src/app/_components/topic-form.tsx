@@ -60,12 +60,31 @@ const VOICE_PRESETS = [
   { label: "Josh", value: "TxGEqnHWrfWFTfGW9XjX", desc: "Deep young male" },
 ] as const;
 
+const MODEL_PRESETS = [
+  {
+    value: "fast-wan",
+    label: "Fast Wan",
+    desc: "Fast, anime & general purpose",
+    resolutions: ["480p", "580p", "720p"],
+    defaultResolution: "480p",
+  },
+  {
+    value: "vidu-q3-turbo",
+    label: "Vidu Q3 Turbo",
+    desc: "High quality cinematic",
+    resolutions: ["360p", "540p", "720p", "1080p"],
+    defaultResolution: "720p",
+  },
+] as const;
+
 const topicFormSchema = z.object({
   topic: z.string().min(3, "Topic must be at least 3 characters").max(500),
   durationSec: z.coerce.number().min(3).max(60),
   style: z.string().min(1, "Please select or describe a style"),
   captions: z.boolean(),
   voiceId: z.string(),
+  modelId: z.string(),
+  resolution: z.string(),
 });
 
 type TopicFormValues = z.infer<typeof topicFormSchema>;
@@ -76,6 +95,8 @@ const defaultValues: TopicFormValues = {
   style: STYLE_PRESETS[0].value,
   captions: true,
   voiceId: VOICE_PRESETS[0].value,
+  modelId: MODEL_PRESETS[0].value,
+  resolution: MODEL_PRESETS[0].defaultResolution,
 };
 
 const formId = "topic-form";
@@ -96,6 +117,8 @@ export function TopicForm() {
         values.style,
         values.captions,
         values.voiceId,
+        values.modelId,
+        values.resolution,
       ),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: videosKeys.lists() });
@@ -220,6 +243,81 @@ export function TopicForm() {
               </div>
             </Field>
           )}
+        />
+
+        <Controller
+          name="modelId"
+          control={form.control}
+          render={({ field }) => (
+            <Field>
+              <FieldLabel>AI Video Model</FieldLabel>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {MODEL_PRESETS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => {
+                      field.onChange(preset.value);
+                      form.setValue("resolution", preset.defaultResolution);
+                    }}
+                    className={`flex flex-col items-start rounded-lg border p-3 transition-colors ${
+                      field.value === preset.value
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-background hover:border-primary/50"
+                    }`}
+                  >
+                    <span
+                      className={`font-semibold ${
+                        field.value === preset.value
+                          ? "text-primary"
+                          : "text-foreground"
+                      }`}
+                    >
+                      {preset.label}
+                    </span>
+                    <span className="text-sm text-muted-foreground mt-1">
+                      {preset.desc}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </Field>
+          )}
+        />
+
+        <Controller
+          name="resolution"
+          control={form.control}
+          render={({ field }) => {
+            const currentModelId = form.watch("modelId");
+            const currentModel =
+              MODEL_PRESETS.find((m) => m.value === currentModelId) ||
+              MODEL_PRESETS[0];
+
+            return (
+              <Field>
+                <FieldLabel>Video Resolution</FieldLabel>
+                <div className="flex flex-wrap gap-2">
+                  {currentModel.resolutions.map((res) => (
+                    <button
+                      key={res}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => field.onChange(res)}
+                      className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                        field.value === res
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-background text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      {res}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            );
+          }}
         />
 
         <Controller

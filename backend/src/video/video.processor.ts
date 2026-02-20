@@ -23,6 +23,8 @@ interface VideoJobData {
   style?: string;
   captions?: boolean;
   voiceId?: string;
+  modelId?: string;
+  resolution?: string;
 }
 
 interface ScriptResult {
@@ -38,13 +40,7 @@ interface VoiceResult {
 
 interface VideoResult {
   path: string;
-  config: {
-    estimatedDurationSec: number;
-    isDurationCapped: boolean;
-    resolution: string;
-    framesPerSecond: number;
-    numFrames: number;
-  };
+  config: Record<string, any>;
   falVideoUrl: string;
   segments?: { durationSec: number; path: string }[];
 }
@@ -73,10 +69,14 @@ export class VideoProcessor extends WorkerHost {
       style: jobStyle,
       captions: jobCaptions,
       voiceId: jobVoiceId,
+      modelId: jobModelId,
+      resolution: jobResolution,
     } = job.data;
     const requestedDurationSec = rawDurationSec ?? 5;
     const style = jobStyle ?? 'Cinematic';
     const captions = jobCaptions ?? true;
+    const modelId = jobModelId ?? 'fast-wan';
+    const resolution = jobResolution ?? '480p';
     const uploadsDir = path.resolve(process.cwd(), 'uploads', videoId);
     const voiceId =
       jobVoiceId || this.configService.get<string>('elevenlabs.voiceId') || '';
@@ -153,6 +153,8 @@ export class VideoProcessor extends WorkerHost {
         requestedDurationSec,
         voiceResult.durationSec,
         styledPrompts,
+        modelId,
+        resolution,
       );
 
       // Step 5: Merge
@@ -380,6 +382,8 @@ export class VideoProcessor extends WorkerHost {
     requestedDurationSec: number,
     audioDurationSec: number,
     styledPrompts: string[],
+    modelId: string,
+    resolution: string,
   ): Promise<VideoResult> {
     const prevVideo = previous?.steps.video;
     if (
@@ -393,10 +397,9 @@ export class VideoProcessor extends WorkerHost {
         falVideoUrl: prevVideo.result.falVideoUrl ?? 'resumed',
         config: {
           estimatedDurationSec: prevVideo.result.generatedDurationSec,
-          isDurationCapped: prevVideo.result.isDurationCapped,
+          isDurationCapped: prevVideo.result.isDurationCapped ?? false,
           resolution: prevVideo.input.resolution,
-          framesPerSecond: prevVideo.input.framesPerSecond,
-          numFrames: prevVideo.input.numFrames,
+          ...(prevVideo.input.providerConfig || {}),
         },
         segments: prevVideo.result.segments as
           | { durationSec: number; path: string }[]
@@ -410,6 +413,8 @@ export class VideoProcessor extends WorkerHost {
 
     const videoStart = Date.now();
     const videoResult = await this.videoGenService.generateVideo(
+      modelId,
+      resolution,
       styledPrompts,
       uploadsDir,
       audioDurationSec,
@@ -420,17 +425,19 @@ export class VideoProcessor extends WorkerHost {
       input: {
         prompts: styledPrompts,
         aspectRatio: '9:16',
-        resolution: videoResult.config.resolution,
-        framesPerSecond: videoResult.config.framesPerSecond,
-        numFrames: videoResult.config.numFrames,
+        resolution,
+        modelId,
+        providerConfig: videoResult.config,
         requestedTargetDurationSec: requestedDurationSec,
         sourceAudioDurationSec: audioDurationSec,
       },
       result: {
         videoPath: videoResult.path,
         falVideoUrl: videoResult.falVideoUrl,
-        generatedDurationSec: videoResult.config.estimatedDurationSec,
-        isDurationCapped: videoResult.config.isDurationCapped,
+        generatedDurationSec: Number(
+          videoResult.config['estimatedDurationSec'] || 0,
+        ),
+        isDurationCapped: Boolean(videoResult.config['isDurationCapped']),
         ...(videoResult.segments && { segments: videoResult.segments }),
       },
       durationMs: videoDuration,

@@ -16,6 +16,8 @@ export async function createVideo(
   style?: string,
   captions?: boolean,
   voiceId?: string,
+  modelId?: string,
+  resolution?: string,
 ): Promise<{ id: string; status: string }> {
   const payload: {
     topic: string;
@@ -23,6 +25,8 @@ export async function createVideo(
     style?: string;
     captions?: boolean;
     voiceId?: string;
+    modelId?: string;
+    resolution?: string;
   } = {
     topic,
   };
@@ -37,6 +41,12 @@ export async function createVideo(
   }
   if (voiceId) {
     payload.voiceId = voiceId;
+  }
+  if (modelId) {
+    payload.modelId = modelId;
+  }
+  if (resolution) {
+    payload.resolution = resolution;
   }
 
   return api.post("/videos", payload);
