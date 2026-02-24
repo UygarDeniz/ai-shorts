@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as ffmpeg from 'fluent-ffmpeg';
 import * as path from 'node:path';
 import * as ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import { EnvironmentVariables } from '../env.validation.js';
 
 @Injectable()
 export class MediaService {
@@ -11,8 +12,10 @@ export class MediaService {
   readonly ffmpegPath: string;
   readonly ffprobePath: string;
 
-  constructor(private readonly configService: ConfigService) {
-    const customPath = this.configService.get<string>('ffmpeg.path');
+  constructor(
+    private readonly configService: ConfigService<EnvironmentVariables>,
+  ) {
+    const customPath = this.configService.get('FFMPEG_PATH', { infer: true });
     this.ffmpegPath = customPath ?? ffmpegInstaller.path;
     ffmpeg.default.setFfmpegPath(this.ffmpegPath);
 

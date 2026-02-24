@@ -19,7 +19,7 @@ export class VideoService {
     @InjectQueue('video-generation') private readonly videoQueue: Queue,
   ) {}
 
-  async create(dto: CreateVideoDto) {
+  async create(dto: CreateVideoDto, userId?: string) {
     const durationSec = dto.durationSec ?? 5;
     const style = dto.style ?? 'Cinematic';
     const captions = dto.captions ?? true;
@@ -28,11 +28,19 @@ export class VideoService {
     const resolution = dto.resolution ?? '480p';
 
     const video = await this.prisma.video.create({
-      data: { topic: dto.topic, style, captions, voiceId, modelId, resolution },
+      data: {
+        topic: dto.topic,
+        style,
+        captions,
+        voiceId,
+        modelId,
+        resolution,
+        userId,
+      },
     });
 
     this.logger.log(
-      `Created video record ${video.id} for topic: "${dto.topic}" style: "${style}" captions: ${captions} voiceId: "${voiceId}" modelId: "${modelId}" resolution: "${resolution}"`,
+      `Created video record ${video.id} for topic: "${dto.topic}" style: "${style}" captions: ${captions} voiceId: "${voiceId}" userId: "${userId}"`,
     );
 
     await this.videoQueue.add(
@@ -69,16 +77,19 @@ export class VideoService {
     return video;
   }
 
-  async findAll(page = 1, limit = 20) {
+  async findAll(page = 1, limit = 20, userId?: string) {
     const skip = (page - 1) * limit;
+
+    const where = userId ? { userId } : {};
 
     const [videos, total] = await Promise.all([
       this.prisma.video.findMany({
+        where,
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
       }),
-      this.prisma.video.count(),
+      this.prisma.video.count({ where }),
     ]);
 
     return {

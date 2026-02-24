@@ -21,6 +21,9 @@ export default () => ({
   pipeline: {
     saveToDisk: process.env['PIPELINE_SAVE_TO_DISK'] !== 'false',
   },
+  supabase: {
+    url: process.env['SUPABASE_URL'],
+  },
   ffmpeg: {
     path: process.env['FFMPEG_PATH'],
   },

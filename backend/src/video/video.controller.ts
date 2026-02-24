@@ -8,8 +8,11 @@ import {
   Res,
   NotFoundException,
   ForbiddenException,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import { AuthGuard } from '@nestjs/passport';
+import type { Request, Response } from 'express';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { VideoService } from './video.service.js';
@@ -33,17 +36,29 @@ export class VideoController {
   }
 
   @Post()
-  async create(@Body() dto: CreateVideoDto) {
-    const video = await this.videoService.create(dto);
+  @UseGuards(AuthGuard('jwt'))
+  async create(
+    @Body() dto: CreateVideoDto,
+    @Req() req: Request & { user?: { userId: string } },
+  ) {
+    const userId = req.user?.userId;
+    const video = await this.videoService.create(dto, userId);
     return { id: video.id, status: video.status };
   }
 
   @Get()
-  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+  @UseGuards(AuthGuard('jwt'))
+  async findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Req() req?: Request & { user?: { userId: string } },
+  ) {
     const parsedLimit = limit ? parseInt(limit, 10) : 20;
+    const userId = req?.user?.userId;
     return this.videoService.findAll(
       page ? parseInt(page, 10) : 1,
       Math.min(Math.max(1, parsedLimit), 100),
+      userId,
     );
   }
 

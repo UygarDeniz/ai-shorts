@@ -79,7 +79,7 @@ export class VideoProcessor extends WorkerHost {
     const resolution = jobResolution ?? '480p';
     const uploadsDir = path.resolve(process.cwd(), 'uploads', videoId);
     const voiceId =
-      jobVoiceId || this.configService.get<string>('elevenlabs.voiceId') || '';
+      jobVoiceId || this.configService.get<string>('ELEVENLABS_VOICE_ID') || '';
 
     const previous = this.pipelineLogger.load(videoId);
     const isResume = previous?.status === 'failed' && !!previous.steps;

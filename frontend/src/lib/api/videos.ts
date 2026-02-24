@@ -1,4 +1,4 @@
-import { api } from "@/lib/api-client";
+import { clientApi } from "@/lib/api-client";
 import type { Video, PaginatedVideos } from "@/types/video";
 
 export const videosKeys = {
@@ -24,13 +24,13 @@ export interface VideoConfig {
 }
 
 export async function getConfig(): Promise<VideoConfig> {
-  return api.get("/videos/config");
+  return clientApi.get("/videos/config");
 }
 
 export async function getVoices(): Promise<
   { id: string; label: string; desc: string; previewUrl?: string }[]
 > {
-  return api.get("/voices");
+  return clientApi.get("/voices");
 }
 
 export async function createVideo(
@@ -72,22 +72,22 @@ export async function createVideo(
     payload.resolution = resolution;
   }
 
-  return api.post("/videos", payload);
+  return clientApi.post("/videos", payload);
 }
 
 export async function getVideo(id: string): Promise<Video> {
-  return api.get(`/videos/${id}`);
+  return clientApi.get(`/videos/${id}`);
 }
 
 export async function getVideos(
   page = 1,
   limit = 20,
 ): Promise<PaginatedVideos> {
-  return api.get(`/videos?page=${page}&limit=${limit}`);
+  return clientApi.get(`/videos?page=${page}&limit=${limit}`);
 }
 
 export async function retryVideo(
   id: string,
 ): Promise<{ id: string; status: string }> {
-  return api.post(`/videos/${id}/retry`);
+  return clientApi.post(`/videos/${id}/retry`);
 }

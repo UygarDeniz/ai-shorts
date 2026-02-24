@@ -1,4 +1,5 @@
 import { env } from "@/config/env";
+import { createClient } from "@/lib/supabase/server";
 
 export class ApiError extends Error {
   public readonly statusCode: number;
@@ -12,20 +13,22 @@ export class ApiError extends Error {
   }
 }
 
-async function fetchApi<T>(url: string, options: RequestInit = {}): Promise<T> {
+async function fetchServerApi<T>(
+  url: string,
+  options: RequestInit = {},
+): Promise<T> {
   const method = options.method ?? "GET";
   const fullUrl = `${env.API_URL}${url}`;
 
   let token = undefined;
   try {
-    const { createClient } = await import("@/lib/supabase/client");
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
     token = session?.access_token;
   } catch (err) {
-    console.warn("[API] Failed to get Supabase session", err);
+    console.warn("[API] Failed to get Supabase session on server", err);
   }
 
   const headers: Record<string, string> = {
@@ -45,42 +48,31 @@ async function fetchApi<T>(url: string, options: RequestInit = {}): Promise<T> {
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     const message = body.message ?? `Request failed (${response.status})`;
-
-    console.error(`[API] ${method} ${url} → ${response.status}: ${message}`);
-
+    console.error(
+      `[Server API] ${method} ${url} → ${response.status}: ${message}`,
+    );
     throw new ApiError(response.status, message);
   }
 
   return response.json();
 }
 
-export const clientApi = {
+/**
+ * Server-only API client. Use this strictly within Server Components
+ * or Server Actions to make authenticated requests.
+ */
+export const serverApi = {
   get<T>(url: string, options?: RequestInit): Promise<T> {
-    return fetchApi<T>(url, { ...options, method: "GET" });
+    return fetchServerApi<T>(url, { ...options, method: "GET" });
   },
   post<T>(url: string, body?: unknown, options?: RequestInit): Promise<T> {
-    return fetchApi<T>(url, {
+    return fetchServerApi<T>(url, {
       ...options,
       method: "POST",
       body: body ? JSON.stringify(body) : undefined,
     });
   },
   delete<T>(url: string, options?: RequestInit): Promise<T> {
-    return fetchApi<T>(url, { ...options, method: "DELETE" });
+    return fetchServerApi<T>(url, { ...options, method: "DELETE" });
   },
 };
-
-/**
- * Build a full backend URL from a relative path (e.g. for video file URLs).
- * Validates the origin matches the API origin to prevent open redirects.
- */
-export function getBackendUrl(path: string): string {
-  const base = new URL(env.API_URL);
-  const result = new URL(path, base.origin);
-
-  if (result.origin !== base.origin) {
-    throw new Error("Invalid URL: external origin detected");
-  }
-
-  return result.href;
-}

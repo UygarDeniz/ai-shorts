@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { AppModule } from './app.module.js';
 
+import { EnvironmentVariables } from './env.validation.js';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
@@ -11,10 +13,10 @@ async function bootstrap() {
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.enableShutdownHooks();
 
-  const configService = app.get(ConfigService);
-  const frontendUrl =
-    configService.get<string>('frontendUrl') ?? 'http://localhost:3000';
-  const port = configService.get<number>('port') ?? 3001;
+  const configService =
+    app.get<ConfigService<EnvironmentVariables>>(ConfigService);
+  const frontendUrl = configService.get('FRONTEND_URL', { infer: true });
+  const port = configService.get('PORT', { infer: true });
 
   app.enableCors({
     origin: frontendUrl,
@@ -30,8 +32,9 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(port);
+  await app.listen(port ?? 3001);
   logger.log(`Backend running on http://localhost:${port}`);
+  logger.log(`Environment: ${configService.get('APP_STAGE', { infer: true })}`);
 }
 
 void bootstrap();

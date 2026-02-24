@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { MediaService } from '../media/media.service.js';
+import { EnvironmentVariables } from '../env.validation.js';
 
 export interface WordTimestamp {
   word: string;
@@ -36,11 +37,13 @@ export class VoiceService {
   private readonly ffmpegPath: string;
 
   constructor(
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService<EnvironmentVariables>,
     private readonly mediaService: MediaService,
   ) {
-    this.apiKey = this.configService.get<string>('elevenlabs.apiKey') ?? '';
-    this.voiceId = this.configService.get<string>('elevenlabs.voiceId') ?? '';
+    this.apiKey =
+      this.configService.get('ELEVENLABS_API_KEY', { infer: true }) ?? '';
+    this.voiceId =
+      this.configService.get('ELEVENLABS_VOICE_ID', { infer: true }) ?? '';
     this.ffmpegPath = this.mediaService.ffmpegPath;
   }
 

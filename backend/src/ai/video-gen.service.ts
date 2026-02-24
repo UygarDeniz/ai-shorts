@@ -11,6 +11,7 @@ import {
 } from './video-model.types.js';
 import { FastWanProvider } from './providers/fast-wan.provider.js';
 import { ViduQ3TurboProvider } from './providers/vidu-q3-turbo.provider.js';
+import { EnvironmentVariables } from '../env.validation.js';
 
 @Injectable()
 export class VideoGenService {
@@ -18,11 +19,11 @@ export class VideoGenService {
   private readonly providers: Record<string, VideoModelProvider>;
 
   constructor(
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService<EnvironmentVariables>,
     private readonly mediaService: MediaService,
   ) {
     fal.config({
-      credentials: this.configService.get<string>('fal.apiKey'),
+      credentials: this.configService.get('FAL_KEY', { infer: true }),
     });
 
     this.providers = {

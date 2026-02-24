@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import { EnvironmentVariables } from '../env.validation.js';
 
 export interface GeneratedScript {
   voiceover: string;
@@ -24,9 +25,11 @@ export class ScriptService {
   private readonly logger = new Logger(ScriptService.name);
   private readonly openai: OpenAI;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService<EnvironmentVariables>,
+  ) {
     this.openai = new OpenAI({
-      apiKey: this.configService.get<string>('openai.apiKey'),
+      apiKey: this.configService.get('OPENAI_API_KEY', { infer: true }),
     });
   }
 
@@ -67,11 +70,9 @@ Relevance requirements (CRITICAL — the #1 priority):
 Respond ONLY with valid JSON. No markdown, no extra text.`;
     const userPrompt = `Create a short-form video script about: ${topic}`;
 
-    const model =
-      this.configService.get<string>('openai.model') ?? 'gpt-4o-mini';
+    const model = 'gpt-4o-mini';
     const defaultTemp = model.includes('gpt-5-mini') ? 1 : 0.5;
-    const temperature =
-      this.configService.get<number>('openai.temperature') ?? defaultTemp;
+    const temperature = defaultTemp;
 
     const schemaProperties: Record<string, unknown> = {
       voiceover: {
