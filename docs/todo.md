@@ -1,7 +1,11 @@
 # dont save it to disk use s3
 
-# landing page - dashboard
+# create nice looking dashboard
 
-# style of the website
+# add dashboard and demo to landing page
 
-# fix fetchApi serverside
+# add payment integration (credits, how many credits for each video/model) (stripe/paddle)
+
+# deploy ec2
+
+# add more video models
